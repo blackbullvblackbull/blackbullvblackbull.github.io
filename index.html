@@ -1,0 +1,833 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Black Bull v Black Bull: ram the other bull off the chart. $AVA on Solana.">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Black Bull v Black Bull</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bowlby+One&family=Archivo:wght@400;600;800&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: a night bullring. Scoreboard band on top, the square ring canvas in the middle, the $AVA strip below. One dark look by design. */
+:root {
+  --night: #1b0f0d;      /* oxblood night around the ring */
+  --night-2: #2a1714;    /* raised panels */
+  --sand: #d8b885;       /* ring floor */
+  --brass: #e6ab3e;      /* gold-horn bull */
+  --steel: #c3cad4;      /* silver-horn bull */
+  --rope: #b3261c;       /* ring rope, danger */
+  --bone: #f2e7d3;       /* text */
+  --bone-dim: #b8a68d;
+  --display: "Bowlby One", "Arial Black", Impact, sans-serif;
+  --body: "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body {
+  background: var(--night);
+  color: var(--bone);
+  font-family: var(--body);
+  font-size: 15px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 12px 24px;
+  overflow-x: hidden;
+}
+.wrap { max-width: 780px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+
+header.board {
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px;
+}
+.side { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.side.right { align-items: flex-end; text-align: right; }
+.side .who { font-family: var(--display); font-size: clamp(13px, 3.2vw, 18px); letter-spacing: .02em; }
+.side.left .who { color: var(--brass); }
+.side.right .who { color: var(--steel); }
+.side .keys { font-size: 12px; color: var(--bone-dim); }
+.pips { display: flex; gap: 6px; }
+.pip { width: 14px; height: 14px; border-radius: 50%; border: 2px solid currentColor; opacity: .55; }
+.side.left .pip { color: var(--brass); }
+.side.right .pip { color: var(--steel); }
+.pip.on { background: currentColor; opacity: 1; }
+h1 {
+  font-family: var(--display); font-weight: 400; margin: 0; text-align: center;
+  font-size: clamp(16px, 4.4vw, 30px); line-height: .95; letter-spacing: .01em; text-wrap: balance;
+}
+h1 span { display: block; font-size: .5em; color: var(--rope); letter-spacing: .3em; margin: 2px 0; }
+
+.stage { position: relative; align-self: center; touch-action: none; user-select: none; -webkit-user-select: none; }
+canvas { display: block; border-radius: 14px; max-width: 100%; }
+
+.panel {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; text-align: center; padding: 24px; border-radius: 14px;
+  background: color-mix(in srgb, var(--night) 72%, transparent);
+  backdrop-filter: blur(2px);
+}
+.panel h2 { font-family: var(--display); font-weight: 400; font-size: clamp(26px, 7vw, 48px); margin: 0; line-height: 1; text-wrap: balance; }
+.panel p { margin: 0; max-width: 34ch; color: var(--bone-dim); line-height: 1.45; }
+.btns { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+button, .btn {
+  font-family: var(--display); font-size: 15px; letter-spacing: .03em; cursor: pointer;
+  border: 0; border-radius: 999px; padding: 12px 22px; text-decoration: none;
+  background: var(--bone); color: var(--night);
+}
+button.alt, .btn.alt { background: transparent; color: var(--bone); box-shadow: inset 0 0 0 2px var(--bone-dim); }
+button:focus-visible, .btn:focus-visible, .ca:focus-visible { outline: 3px solid var(--brass); outline-offset: 3px; }
+button:hover, .btn:hover { filter: brightness(1.08); }
+
+#chargeBtn {
+  position: absolute; right: 14px; bottom: 14px; width: 92px; height: 92px; padding: 0; border-radius: 50%;
+  background: color-mix(in srgb, var(--rope) 85%, transparent); color: var(--bone); font-size: 13px; line-height: 1.1;
+}
+#chargeBtn.held { filter: brightness(1.3); transform: scale(.96); }
+
+.strip {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; justify-content: space-between;
+  background: var(--night-2); border-radius: 14px; padding: 12px 14px;
+}
+.tick { font-family: var(--display); font-size: 20px; color: var(--brass); }
+.ca {
+  font-family: var(--mono); font-size: 12px; color: var(--bone); background: transparent; border: 1px dashed var(--bone-dim);
+  border-radius: 8px; padding: 8px 10px; cursor: pointer; letter-spacing: 0; min-width: 0; overflow-wrap: anywhere; text-align: left;
+}
+.links { display: flex; gap: 8px; flex-wrap: wrap; }
+.links a { color: var(--bone); font-weight: 600; font-size: 13px; }
+.help { font-size: 12.5px; color: var(--bone-dim); line-height: 1.5; text-align: center; }
+.help b { color: var(--bone); font-weight: 600; }
+.powers { display: flex; flex-wrap: wrap; gap: 6px 14px; justify-content: center; font-size: 12.5px; color: var(--bone-dim); }
+.powers span b { color: var(--bone); font-weight: 600; }
+
+.lb { background: var(--night-2); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.lbhead { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 12px; }
+.lb h3 { font-family: var(--display); font-weight: 400; font-size: 22px; margin: 0; color: var(--brass); letter-spacing: .02em; }
+.lbnote { font-size: 12.5px; color: var(--bone-dim); }
+.lbme { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.lbme label { font-size: 13px; color: var(--bone-dim); }
+.lbme input {
+  font: 600 14px var(--body); color: var(--bone); background: var(--night); border: 1px solid #5a3b33; border-radius: 8px;
+  padding: 8px 10px; width: 12em; max-width: 100%;
+}
+.lbme input:focus-visible { outline: 3px solid var(--brass); outline-offset: 2px; }
+button.small { font-size: 12px; padding: 8px 14px; }
+.mystats { font-size: 13px; color: var(--bone); font-variant-numeric: tabular-nums; }
+.tblwrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 14px; }
+th { text-align: left; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--bone-dim); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid #4a2c25; }
+td { padding: 8px; border-bottom: 1px solid #33201b; white-space: nowrap; }
+td.num, th.num { text-align: right; }
+td.rank { font-family: var(--display); color: var(--bone-dim); width: 2.5em; }
+tr.top1 td.rank { color: var(--brass); }
+tr.me td { background: color-mix(in srgb, var(--brass) 14%, transparent); }
+td.nick { max-width: 12em; overflow: hidden; text-overflow: ellipsis; }
+.empty { color: var(--bone-dim); font-size: 13.5px; padding: 10px 8px; }
+@media (max-width: 460px) { .side .keys { display: none; } .hide-sm { display: none; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="board">
+    <div class="side left">
+      <div class="who" id="n1">GOLD HORN</div>
+      <div class="pips" id="p1"></div>
+      <div class="keys" id="k1">WASD · hold F to charge</div>
+    </div>
+    <h1>BLACK BULL<span>V</span>BLACK BULL</h1>
+    <div class="side right">
+      <div class="who" id="n2">SILVER HORN</div>
+      <div class="pips" id="p2"></div>
+      <div class="keys" id="k2">Arrows · hold L to charge</div>
+    </div>
+  </header>
+
+  <div class="stage" id="stage">
+    <canvas id="c" aria-label="Bullring arena"></canvas>
+    <button id="chargeBtn" hidden>HOLD<br>TO<br>CHARGE</button>
+
+    <div class="panel" id="menu">
+      <h2>Two bulls.<br>One ring.</h2>
+      <p>Hold your bag to charge, release to send it. Grab pumps and whales off the sand. Rug the other bull over the rope. First to 3 rounds wins. Keep holding after a full charge for leverage (up to 1.8x power), but hold too long and you get liquidated.</p>
+      <p id="streakInfo">Beat the CPU to start a streak. It gets meaner every win.</p>
+      <div class="btns">
+        <button id="cpuBtn">VS CPU</button>
+        <button id="pvpBtn" class="alt">2 PLAYERS</button>
+      </div>
+      <p id="touchNote" hidden>On a phone: drag the left side to move, hold the red button to charge.</p>
+    </div>
+
+    <div class="panel" id="over" hidden>
+      <h2 id="overTitle">GOLD HORN WINS</h2>
+      <p id="overSub">3 – 1</p>
+      <p id="overStats" hidden></p>
+      <div class="btns">
+        <button id="againBtn">REMATCH</button>
+        <a class="btn alt" id="shareBtn" href="#" target="_blank" rel="noopener">SHARE ON X</a>
+      </div>
+      <button class="alt" id="menuBtn" style="font-size:13px;padding:8px 16px">CHANGE MODE</button>
+    </div>
+  </div>
+
+  <div class="strip">
+    <span class="tick">$AVA</span>
+    <button class="ca" id="ca" title="Copy contract address">49aU4HC6o7buHoQ6WsqNaHBQDhKB1ZUYVuC3rggwpump</button>
+    <div class="links">
+      <a href="https://pump.fun/coin/49aU4HC6o7buHoQ6WsqNaHBQDhKB1ZUYVuC3rggwpump" target="_blank" rel="noopener">pump.fun</a>
+      <a href="https://app.streamflow.finance/contract/solana/mainnet/2hdBBqc9jhrKV3kBWZ6uqLfXTE52shR8e3uro8i2bf6X" target="_blank" rel="noopener">Dev lock</a>
+      <a href="https://dexscreener.com/solana/49aU4HC6o7buHoQ6WsqNaHBQDhKB1ZUYVuC3rggwpump" target="_blank" rel="noopener">Chart</a>
+    </div>
+  </div>
+  <div class="help">
+    <b>Ram with your horns</b> for a big hit. A ram from the side sends a bull flying. Two heads meeting is a bull trap: both bounce.
+    Charging slows you down. Keep holding a full charge for leverage (the gold ring), and let go before it blinks red too long or you get liquidated.
+  </div>
+  <div class="powers" aria-label="Power orbs">
+    <span>🚀 <b>Pump</b> faster, instant charge</span>
+    <span>💎 <b>Diamond Hands</b> half knockback, no stun</span>
+    <span>🔥 <b>FOMO</b> rams hit 60% harder</span>
+    <span>🐋 <b>Whale</b> bigger and heavier</span>
+    <span>🧨 <b>Rug Pull</b> blasts the other bull away</span>
+  </div>
+
+  <section class="lb" aria-labelledby="lbh">
+    <div class="lbhead">
+      <h3 id="lbh">Top Traders</h3>
+      <span class="lbnote" id="lbNote">Loading the board…</span>
+    </div>
+    <div class="lbme">
+      <label for="nick">Your bull's name</label>
+      <input id="nick" maxlength="16" placeholder="Anon Bull" autocomplete="off">
+      <button id="nickSave" class="alt small">SAVE NAME</button>
+      <span class="mystats" id="myStats"></span>
+    </div>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>#</th><th>Bull</th><th class="num">Best PnL</th><th class="num">Best streak</th><th class="num hide-sm">CPU lvl</th></tr></thead>
+        <tbody id="lbBody"><tr><td colspan="5" class="empty">No scores yet. Beat the CPU to get on the board.</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const CA = "49aU4HC6o7buHoQ6WsqNaHBQDhKB1ZUYVuC3rggwpump";
+  const W = 800, CX = 400, CY = 400, R = 330, WIN = 3;
+  const cv = document.getElementById("c"), ctx = cv.getContext("2d");
+  const stage = document.getElementById("stage");
+  const $ = (id) => document.getElementById(id);
+  const css = getComputedStyle(document.documentElement);
+  const col = (n) => css.getPropertyValue(n).trim();
+  const C = { sand: col("--sand"), brass: col("--brass"), steel: col("--steel"), rope: col("--rope"), bone: col("--bone"), night: col("--night") };
+  const isTouch = matchMedia("(pointer: coarse)").matches;
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // ---------- sizing ----------
+  let scale = 1, cssSize = 600;
+  function resize() {
+    const avail = Math.min(stage.parentElement.clientWidth, 760);
+    const h = window.innerHeight - (isTouch ? 150 : 210);
+    cssSize = Math.max(280, Math.min(avail, h));
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.style.width = cv.style.height = cssSize + "px";
+    stage.style.width = cssSize + "px";
+    cv.width = cv.height = Math.round(cssSize * dpr);
+    scale = (cssSize * dpr) / W;
+  }
+  addEventListener("resize", resize);
+  resize();
+
+  // ---------- audio (starts on first button press) ----------
+  let ac = null;
+  function thud(power = 1, pitch = 90) {
+    if (!ac) return;
+    const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
+    o.type = "triangle"; o.frequency.setValueAtTime(pitch * 1.8, t); o.frequency.exponentialRampToValueAtTime(pitch * .5, t + .18);
+    g.gain.setValueAtTime(.35 * power, t); g.gain.exponentialRampToValueAtTime(.001, t + .25);
+    o.connect(g).connect(ac.destination); o.start(t); o.stop(t + .26);
+  }
+  function horn(freqs) {
+    if (!ac) return;
+    freqs.forEach((f, i) => {
+      const t = ac.currentTime + i * .14, o = ac.createOscillator(), g = ac.createGain();
+      o.type = "sawtooth"; o.frequency.value = f;
+      g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.08, t + .02); g.gain.exponentialRampToValueAtTime(.0001, t + .22);
+      o.connect(g).connect(ac.destination); o.start(t); o.stop(t + .24);
+    });
+  }
+
+  // ---------- input ----------
+  const keys = new Set();
+  const GAME_KEYS = ["KeyW","KeyA","KeyS","KeyD","KeyF","Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight","KeyL","Enter"];
+  addEventListener("keydown", (e) => { if (state !== "menu" && state !== "over" && GAME_KEYS.includes(e.code)) e.preventDefault(); keys.add(e.code); });
+  addEventListener("keyup", (e) => keys.delete(e.code));
+  addEventListener("blur", () => keys.clear());
+
+  const joy = { id: null, ox: 0, oy: 0, x: 0, y: 0 };
+  let touchHold = false;
+  cv.addEventListener("pointerdown", (e) => {
+    if (e.pointerType === "mouse") return;
+    joy.id = e.pointerId; joy.ox = e.offsetX; joy.oy = e.offsetY; joy.x = joy.y = 0;
+    cv.setPointerCapture(e.pointerId);
+  });
+  cv.addEventListener("pointermove", (e) => {
+    if (e.pointerId !== joy.id) return;
+    let dx = e.offsetX - joy.ox, dy = e.offsetY - joy.oy; const d = Math.hypot(dx, dy), m = 46;
+    if (d > m) { dx = dx / d * m; dy = dy / d * m; }
+    joy.x = dx / m; joy.y = dy / m;
+  });
+  const endJoy = (e) => { if (e.pointerId === joy.id) { joy.id = null; joy.x = joy.y = 0; } };
+  cv.addEventListener("pointerup", endJoy); cv.addEventListener("pointercancel", endJoy);
+  const cb = $("chargeBtn");
+  cb.addEventListener("pointerdown", (e) => { e.preventDefault(); touchHold = true; cb.classList.add("held"); });
+  const relCb = () => { touchHold = false; cb.classList.remove("held"); };
+  cb.addEventListener("pointerup", relCb); cb.addEventListener("pointercancel", relCb); cb.addEventListener("pointerleave", relCb);
+  cb.addEventListener("contextmenu", (e) => e.preventDefault());
+
+  function axis(up, down, left, right) {
+    let x = (keys.has(right) ? 1 : 0) - (keys.has(left) ? 1 : 0), y = (keys.has(down) ? 1 : 0) - (keys.has(up) ? 1 : 0);
+    const d = Math.hypot(x, y); return d ? { x: x / d, y: y / d } : { x: 0, y: 0 };
+  }
+  function humanInput(slot) {
+    if (mode === "cpu") {
+      let a = axis("KeyW", "KeyS", "KeyA", "KeyD"); const b = axis("ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight");
+      if (!a.x && !a.y) a = b;
+      if (joy.id !== null && (joy.x || joy.y)) a = { x: joy.x, y: joy.y };
+      return { mx: a.x, my: a.y, hold: keys.has("KeyF") || keys.has("Space") || keys.has("KeyL") || keys.has("Enter") || touchHold };
+    }
+    if (slot === 0) { const a = axis("KeyW", "KeyS", "KeyA", "KeyD"); return { mx: a.x, my: a.y, hold: keys.has("KeyF") || keys.has("Space") }; }
+    const a = axis("ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"); return { mx: a.x, my: a.y, hold: keys.has("KeyL") || keys.has("Enter") };
+  }
+
+  // ---------- bulls ----------
+  function makeBull(x, y, ang, horn, name) {
+    return { x, y, vx: 0, vy: 0, ang, horn, name, r: 34, charge: 0, charging: false, dash: 0, cool: 0, stun: 0, out: false, fall: 0, step: 0, pw: {} };
+  }
+  const has = (b, p) => (b.pw[p] || 0) > 0;
+
+  // ---------- powers ----------
+  const POWERS = {
+    turbo: { icon: "🚀", color: "#5ee08a", name: "PUMP", dur: 5 },
+    hide:  { icon: "💎", color: "#9fd3ff", name: "DIAMOND HANDS", dur: 6 },
+    rage:  { icon: "🔥", color: "#ff6a3d", name: "FOMO", dur: 5 },
+    big:   { icon: "🐋", color: "#6fb6ff", name: "WHALE", dur: 6 },
+    wave:  { icon: "🧨", color: "#f2e7d3", name: "RUG PULL", dur: 0 },
+  };
+  const PKEYS = Object.keys(POWERS);
+  let orbs = [], orbTimer = 3, popups = [], rings = [];
+  const say = (b, text, color) => popups.push({ x: b.x, y: b.y - 50, text, color: color || C.bone, life: 1.1 });
+  const PHASES = ["LAUNCH", "BONDING CURVE", "MIGRATION", "PRICE DISCOVERY", "FINAL CANDLE"];
+  const pnl = (pts) => (pts / 500).toFixed(2) + "x";
+  function spawnOrb() {
+    for (let tries = 0; tries < 20; tries++) {
+      const a = Math.random() * 6.283, d = Math.sqrt(Math.random()) * R * .62;
+      const x = CX + Math.cos(a) * d, y = CY + Math.sin(a) * d;
+      if (bulls.every((b) => Math.hypot(b.x - x, b.y - y) > 110) && orbs.every((o) => Math.hypot(o.x - x, o.y - y) > 90)) {
+        orbs.push({ x, y, type: PKEYS[Math.floor(Math.random() * PKEYS.length)], life: 8, t: 0 }); return;
+      }
+    }
+  }
+  function updateOrbs(dt) {
+    if ((orbTimer -= dt) <= 0) { if (orbs.length < 2) spawnOrb(); orbTimer = 4.5 + Math.random() * 2.5; }
+    orbs = orbs.filter((o) => {
+      o.life -= dt; o.t += dt;
+      const b = bulls.find((b) => !b.out && Math.hypot(b.x - o.x, b.y - o.y) < b.r + 20);
+      if (b) { grant(b, o.type); return false; }
+      return o.life > 0;
+    });
+  }
+  function grant(b, type) {
+    const p = POWERS[type], other = bulls[bulls[0] === b ? 1 : 0];
+    popups.push({ x: b.x, y: b.y - 50, text: p.name + "!", color: p.color, life: 1.1 });
+    horn([440, 660]);
+    if (type === "wave") {
+      rings.push({ x: b.x, y: b.y, r: 20, life: .45, color: p.color });
+      let dx = other.x - b.x, dy = other.y - b.y; const d = Math.hypot(dx, dy) || 1; dx /= d; dy /= d;
+      const k = (d < 260 ? 760 : 420) * (has(other, "hide") ? .45 : 1);
+      if (!other.out) { other.vx = dx * k; other.vy = dy * k; if (!has(other, "hide")) other.stun = .4; other.charging = false; other.charge = 0; }
+      shake = 12; thud(1, 70); dust(b.x, b.y, 18, 1.4);
+      return;
+    }
+    b.pw[type] = p.dur;
+  }
+  let bulls = [];
+  function placeBulls() {
+    bulls = [makeBull(CX - 170, CY, 0, C.brass, "GOLD HORN"), makeBull(CX + 170, CY, Math.PI, C.steel, "SILVER HORN")];
+  }
+
+  const ai = { holdFor: 0, held: 0, wobble: 0, think: 0, gx: 0, gy: 0 };
+  let cpuLevel = 1;   // 1..8, rises with the player's win streak
+  function cpuInput(b, t, dt) {
+    const L = cpuLevel;
+    ai.think -= dt;
+    if (ai.think <= 0) {
+      ai.think = Math.max(.05, .26 - L * .025) + Math.random() * .1;
+      const jit = Math.max(8, 60 - L * 7);
+      // grab a power orb when it is closer to us than to the player
+      const orb = orbs.filter((o) => Math.hypot(o.x - b.x, o.y - b.y) < Math.hypot(o.x - t.x, o.y - t.y) && Math.hypot(o.x - b.x, o.y - b.y) < 120 + L * 30)
+        .sort((p, q) => Math.hypot(p.x - b.x, p.y - b.y) - Math.hypot(q.x - b.x, q.y - b.y))[0];
+      if (orb && !b.charging && Math.random() < .35 + L * .07) { ai.gx = orb.x; ai.gy = orb.y; }
+      else {
+        // aim for the spot on the centre side of the target so a hit pushes it outward
+        const tx = t.x - CX, ty = t.y - CY, td = Math.hypot(tx, ty) || 1;
+        const behind = Math.min(70, td * .5);
+        ai.gx = t.x - tx / td * behind + (Math.random() - .5) * jit;
+        ai.gy = t.y - ty / td * behind + (Math.random() - .5) * jit;
+      }
+    }
+    let dx = ai.gx - b.x, dy = ai.gy - b.y; const d = Math.hypot(dx, dy) || 1; let mx = dx / d, my = dy / d;
+    const cx = b.x - CX, cy = b.y - CY, cd = Math.hypot(cx, cy) || 1;
+    if (cd > R * .72) { const k = (cd - R * .72) / (R * .28) * 1.6; mx -= cx / cd * k; my -= cy / cd * k; }
+    const m = Math.hypot(mx, my) || 1; mx /= m; my /= m;
+
+    const fx = Math.cos(b.ang), fy = Math.sin(b.ang);
+    const ex = t.x - b.x, ey = t.y - b.y, ed = Math.hypot(ex, ey) || 1;
+    const aligned = (fx * ex + fy * ey) / ed;
+    let hold = false;
+    if (b.charging) { ai.held += dt; hold = ai.held < ai.holdFor && aligned > .55; if (!hold) ai.held = 0; }
+    else if (b.cool <= 0 && b.dash <= 0 && aligned > .9 - L * .01 && ed < 300 + L * 10 && cd < R * .8 && Math.random() < dt * (3 + L)) {
+      hold = true; ai.held = 0; ai.holdFor = .18 + Math.random() * (.3 + L * .04);
+      if (L >= 4 && Math.random() < .25) ai.holdFor += .5 + Math.random() * .7;   // meaner CPUs use leverage
+    }
+    return { mx, my, hold };
+  }
+
+  const TURN = 9, ACC = 1500, MAXV = 290;
+  function updateBull(b, inp, dt) {
+    if (b.out) { b.fall += dt; b.x += b.vx * dt * .4; b.y += b.vy * dt * .4; return; }
+    b.cool -= dt; b.dash -= dt;
+    for (const k in b.pw) if (b.pw[k] > 0) b.pw[k] -= dt;
+    b.r += ((has(b, "big") ? 46 : 34) - b.r) * Math.min(1, dt * 8);
+    const turbo = has(b, "turbo") ? 1.35 : 1;
+    if (b.stun > 0) { b.stun -= dt; inp = { mx: 0, my: 0, hold: false }; if (b.charging) { b.charging = false; b.charge = 0; } }
+    const acc = (b.charging ? ACC * .3 : ACC) * turbo;
+    if (b.dash <= 0) { b.vx += inp.mx * acc * dt; b.vy += inp.my * acc * dt; }
+    if (inp.mx || inp.my) {
+      const target = Math.atan2(inp.my, inp.mx);
+      let diff = Math.atan2(Math.sin(target - b.ang), Math.cos(target - b.ang));
+      const rate = (b.charging ? TURN * .55 : TURN) * dt * (b.dash > 0 ? .15 : 1);
+      b.ang += Math.max(-rate, Math.min(rate, diff));
+    }
+    if (inp.hold && !b.charging && b.cool <= 0 && b.dash <= 0) { b.charging = true; b.charge = 0; }
+    if (b.charging) {
+      b.charge = Math.min(1, b.charge + dt / (has(b, "turbo") ? .25 : .7));
+      const wasMax = (b.full || 0) >= 1.2;
+      b.full = b.charge >= 1 ? (b.full || 0) + dt : 0;
+      if (!wasMax && b.full >= 1.2) say(b, "MAX LEVERAGE", C.brass);
+      if (b.full > 1.7) {   // held past max leverage: liquidated
+        b.charging = false; b.charge = 0; b.full = 0; b.stun = .7; b.cool = .8;
+        say(b, "LIQUIDATED", C.rope); thud(.6, 40); dust(b.x, b.y, 10, 1);
+      }
+      if (Math.random() < dt * 14) puff(b);
+      if (!inp.hold) {
+        // keep holding after a full charge = leverage: up to 1.8x power, but past 1.7s you get liquidated
+        const pow = b.charge + Math.min(1, (b.full || 0) / 1.2) * .8;
+        const sp = 430 + 700 * pow;
+        b.vx = Math.cos(b.ang) * sp; b.vy = Math.sin(b.ang) * sp;
+        if (pow > 1.5) say(b, "LEVERAGED SEND", C.brass);
+        b.dash = .32 + .12 * Math.min(1, pow); b.cool = .45; b.charging = false; b.dashPower = pow; b.charge = 0; b.full = 0;
+        dust(b.x - Math.cos(b.ang) * 30, b.y - Math.sin(b.ang) * 30, 10, 1);
+        thud(.35, 60);
+      }
+    }
+    const drag = b.dash > 0 ? 1.1 : 4.2;
+    const f = Math.exp(-drag * dt); b.vx *= f; b.vy *= f;
+    if (b.dash <= 0 && b.stun <= 0) {
+      const s = Math.hypot(b.vx, b.vy), cap = (b.charging ? MAXV * .4 : MAXV) * turbo;
+      if (s > cap) { b.vx = b.vx / s * cap; b.vy = b.vy / s * cap; }
+    }
+    b.x += b.vx * dt; b.y += b.vy * dt;
+    b.step += Math.hypot(b.vx, b.vy) * dt * .06;
+    if (Math.hypot(b.x - CX, b.y - CY) > R + 4) {
+      b.out = true; b.fall = 0; b.charging = false; dust(b.x, b.y, 22, 1.6); thud(.9, 45); shake = 14;
+      say(b, "RUGGED", C.rope);
+    }
+  }
+
+  function collide(a, b, dt) {
+    if (a.out || b.out) return;
+    let nx = b.x - a.x, ny = b.y - a.y; const d = Math.hypot(nx, ny) || .001; const min = a.r + b.r;
+    if (d >= min) return;
+    nx /= d; ny /= d;
+    const push = (min - d) / 2; a.x -= nx * push; a.y -= ny * push; b.x += nx * push; b.y += ny * push;
+    const rel = (a.vx - b.vx) * nx + (a.vy - b.vy) * ny;
+    if (rel > 0) { const j = rel * .8; a.vx -= j * nx; a.vy -= j * ny; b.vx += j * nx; b.vy += j * ny; }
+    // horn rams
+    const aFace = Math.cos(a.ang) * nx + Math.sin(a.ang) * ny;      // a facing b
+    const bFace = -(Math.cos(b.ang) * nx + Math.sin(b.ang) * ny);   // b facing a
+    const aRam = a.dash > 0 && aFace > .55, bRam = b.dash > 0 && bFace > .55;
+    if (!aRam && !bRam) return;
+    const hx = (a.x + b.x) / 2, hy = (a.y + b.y) / 2;
+    const take = (x) => (has(x, "hide") ? .45 : 1) * (has(x, "big") ? .7 : 1);
+    const give = (x) => (has(x, "rage") ? 1.6 : 1) * (has(x, "big") ? 1.25 : 1);
+    if (aRam && bRam) {                       // heads clash: both bounce, the stronger bull less
+      const ka = 520 * take(a) * give(b), kb = 520 * take(b) * give(a);
+      a.vx = -nx * ka; a.vy = -ny * ka; b.vx = nx * kb; b.vy = ny * kb;
+      a.dash = b.dash = 0;
+      if (!has(a, "hide")) a.stun = .25; if (!has(b, "hide")) b.stun = .25;
+      spark(hx, hy, 18); thud(1, 140); shake = 12; flash = .12;
+      popups.push({ x: hx, y: hy - 40, text: "BULL TRAP", color: C.bone, life: 1 }); return;
+    }
+    const [att, tgt, dir] = aRam ? [a, b, 1] : [b, a, -1];
+    const tx = nx * dir, ty = ny * dir;
+    // side/back hits land harder than head-to-head
+    const tFace = -(Math.cos(tgt.ang) * tx + Math.sin(tgt.ang) * ty);
+    const side = 1 + (1 - Math.max(0, tFace)) * .45;
+    const k = (520 + 620 * (att.dashPower || 0)) * side * give(att) * take(tgt);
+    tgt.vx = tx * k; tgt.vy = ty * k;
+    if (!has(tgt, "hide")) { tgt.stun = .35 + .25 * (att.dashPower || 0); tgt.charging = false; tgt.charge = 0; }
+    att.vx *= .2; att.vy *= .2; att.dash = 0;
+    spark(hx, hy, (14 + 10 * (att.dashPower || 0)) * (has(att, "rage") ? 1.6 : 1)); dust(hx, hy, 8, 1); thud(.8 + .4 * (att.dashPower || 0), 80); shake = 8 + 8 * (att.dashPower || 0);
+    hits[bulls.indexOf(att)]++;
+    if ((att.dashPower || 0) > .7) say(tgt, "PAPER HANDS", C.bone);
+  }
+
+  // ---------- particles ----------
+  let parts = [], shake = 0, flash = 0;
+  function dust(x, y, n, s) {
+    for (let i = 0; i < n; i++) { const a = Math.random() * 6.28, v = (40 + Math.random() * 120) * s;
+      parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: .6 + Math.random() * .5, max: 1.1, r: 6 + Math.random() * 10, kind: "dust" }); }
+  }
+  function spark(x, y, n) {
+    for (let i = 0; i < n; i++) { const a = Math.random() * 6.28, v = 160 + Math.random() * 320;
+      parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: .25 + Math.random() * .25, max: .5, r: 2 + Math.random() * 2, kind: "spark" }); }
+  }
+  function puff(b) {
+    const fx = Math.cos(b.ang), fy = Math.sin(b.ang), side = Math.random() < .5 ? -1 : 1;
+    parts.push({ x: b.x + fx * 44 - fy * 6 * side, y: b.y + fy * 44 + fx * 6 * side, vx: fx * 60 - fy * 30 * side, vy: fy * 60 + fx * 30 * side,
+      life: .5, max: .5, r: 4, kind: "steam" });
+  }
+
+  // ---------- game flow ----------
+  let mode = "cpu", state = "menu", timer = 0, score = [0, 0], banner = "", lastWinner = -1, hits = [0, 0], matchT0 = 0;
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem("bb_" + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem("bb_" + k, JSON.stringify(v)); } catch (e) {} },
+  };
+  let streak = store.get("streak", 0);
+  const levelFor = (s) => Math.min(8, 1 + s);
+  function streakLine() {
+    $("streakInfo").textContent = streak > 0
+      ? `Win streak: ${streak}. Next CPU is level ${levelFor(streak)} of 8.`
+      : "Beat the CPU to start a streak. It gets meaner every win.";
+  }
+  streakLine();
+  function pips() {
+    [0, 1].forEach((s) => { $("p" + (s + 1)).innerHTML = Array.from({ length: WIN }, (_, i) => `<span class="pip${i < score[s] ? " on" : ""}"></span>`).join(""); });
+  }
+  function startMatch(m) {
+    mode = m; score = [0, 0]; hits = [0, 0]; matchT0 = performance.now(); pips();
+    cpuLevel = levelFor(streak);
+    $("n2").textContent = m === "cpu" ? `SILVER HORN (CPU ${cpuLevel})` : "SILVER HORN";
+    $("k1").textContent = m === "cpu" ? (isTouch ? "Drag to move · hold button" : "WASD/arrows · hold F/Space") : "WASD · hold F to charge";
+    $("k2").textContent = m === "cpu" ? "Computer" : "Arrows · hold L to charge";
+    cb.hidden = !(isTouch && m === "cpu");
+    $("menu").hidden = true; $("over").hidden = true;
+    if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ac = null; } }
+    newRound();
+  }
+  function newRound() { placeBulls(); parts = []; orbs = []; popups = []; rings = []; orbTimer = 2.5; state = "count"; timer = 2.4; horn([220, 220, 330]); }
+  function endRound(winner) {
+    state = "round"; timer = 1.8; lastWinner = winner;
+    if (winner >= 0) { score[winner]++; banner = bulls[winner].name + " SENT IT"; } else banner = "BOTH RUGGED · REDO";
+    pips();
+  }
+  function endMatch() {
+    state = "over"; const w = score[0] > score[1] ? 0 : 1;
+    const name = w === 0 ? "GOLD HORN" : (mode === "cpu" ? "THE CPU" : "SILVER HORN");
+    $("overTitle").textContent = name + (w === 1 && mode === "cpu" ? " WINS" : " WINS");
+    $("overSub").textContent = `${score[w]} – ${score[1 - w]}` + (mode === "cpu" ? (w === 0 ? " · you beat the CPU" : " · the CPU got you") : "");
+    const text = mode === "cpu"
+      ? (w === 0 ? `I beat the CPU ${score[0]}–${score[1]} in Black Bull v Black Bull 🐂🐂` : `Got rugged ${score[0]}–${score[1]} in Black Bull v Black Bull 🐂🐂`)
+      : `${name} won Black Bull v Black Bull ${score[w]}–${score[1 - w]} 🐂🐂`;
+    let share = text;
+    if (mode === "cpu") {
+      const won = w === 0, secs = (performance.now() - matchT0) / 1000;
+      const lvl = cpuLevel;
+      let pts = score[0] * 250 - score[1] * 100 + hits[0] * 25;
+      if (won) pts += 1000 + Math.max(0, 240 - secs) * 3 + (score[1] === 0 ? 500 : 0);
+      pts = Math.max(0, Math.round(pts * (1 + .15 * (lvl - 1))));
+      streak = won ? streak + 1 : 0; store.set("streak", streak);
+      const localBest = Math.max(store.get("best", 0), pts); store.set("best", localBest);
+      $("overStats").hidden = false;
+      $("overStats").textContent = `PnL ${pnl(pts)} vs CPU level ${lvl} · ${hits[0]} rams landed · ` +
+        (won ? `win streak ${streak}` : "streak reset");
+      if (won) share = `I ${pnl(pts)}'d the level ${lvl} CPU in Black Bull v Black Bull 🐂🐂 (${score[0]}–${score[1]}, streak ${streak})`;
+      else share = `Got rugged by the level ${lvl} CPU in Black Bull v Black Bull 🐂 Closed at ${pnl(pts)}`;
+      streakLine();
+      board.record(pts, won);
+    } else $("overStats").hidden = true;
+    $("shareBtn").href = "https://x.com/intent/post?text=" + encodeURIComponent(`${share}\n\n$AVA ${CA}`);
+    $("over").hidden = false; cb.hidden = true;
+    horn(w === 0 || mode !== "cpu" ? [262, 330, 392, 523] : [330, 262, 196]);
+  }
+  $("cpuBtn").onclick = () => startMatch("cpu");
+  $("pvpBtn").onclick = () => startMatch("pvp");
+  $("againBtn").onclick = () => startMatch(mode);
+  $("menuBtn").onclick = () => { state = "menu"; $("over").hidden = true; $("menu").hidden = false; };
+  if (isTouch) { $("touchNote").hidden = false; $("pvpBtn").hidden = true; }
+
+  $("ca").onclick = async () => {
+    const el = $("ca"), old = el.textContent;
+    try { await navigator.clipboard.writeText(CA); el.textContent = "Copied ✓"; }
+    catch (e) { const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); return; }
+    setTimeout(() => (el.textContent = old), 1200);
+  };
+
+  // ---------- drawing ----------
+  function drawRing() {
+    ctx.fillStyle = C.night; ctx.fillRect(0, 0, W, W);
+    // crowd glow
+    const glow = ctx.createRadialGradient(CX, CY, R * .9, CX, CY, W * .75);
+    glow.addColorStop(0, "rgba(179,38,28,.25)"); glow.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = glow; ctx.fillRect(0, 0, W, W);
+    // sand floor with spotlight
+    const g = ctx.createRadialGradient(CX - 60, CY - 80, 20, CX, CY, R + 10);
+    g.addColorStop(0, "#f1d8a8"); g.addColorStop(.55, C.sand); g.addColorStop(1, "#9c7a4c");
+    ctx.beginPath(); ctx.arc(CX, CY, R + 8, 0, 6.283); ctx.fillStyle = g; ctx.fill();
+    // raked sand rings
+    ctx.strokeStyle = "rgba(90,60,30,.12)"; ctx.lineWidth = 2;
+    for (let r = 60; r < R; r += 48) { ctx.beginPath(); ctx.arc(CX, CY, r, 0, 6.283); ctx.stroke(); }
+    // centre mark
+    ctx.strokeStyle = "rgba(179,38,28,.45)"; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(CX, CY, 42, 0, 6.283); ctx.stroke();
+    // rope: red and bone segments
+    ctx.lineWidth = 9; const seg = 48;
+    for (let i = 0; i < seg; i++) {
+      ctx.beginPath(); ctx.strokeStyle = i % 2 ? C.rope : C.bone;
+      ctx.arc(CX, CY, R + 8, i / seg * 6.283, (i + 1) / seg * 6.283); ctx.stroke();
+    }
+    // posts
+    for (let i = 0; i < 8; i++) { const a = i / 8 * 6.283 + .2;
+      ctx.beginPath(); ctx.arc(CX + Math.cos(a) * (R + 8), CY + Math.sin(a) * (R + 8), 9, 0, 6.283); ctx.fillStyle = "#3a201b"; ctx.fill(); }
+  }
+
+  function drawBull(b) {
+    let s = b.r / 34, alpha = 1;
+    if (b.out) { s *= Math.max(.35, 1 - b.fall * .9); alpha = Math.max(0, 1 - b.fall * 1.1); }
+    ctx.save(); ctx.globalAlpha = alpha; ctx.translate(b.x, b.y);
+    // active power auras
+    let ai2 = 0;
+    for (const k of PKEYS) if (has(b, k)) {
+      const left = b.pw[k], blink = left < 1.2 && Math.floor(left * 8) % 2;
+      if (!blink) {
+        ctx.save(); ctx.strokeStyle = POWERS[k].color; ctx.lineWidth = 3; ctx.setLineDash([10, 8]);
+        ctx.lineDashOffset = -performance.now() / 30; ctx.globalAlpha = alpha * .85;
+        ctx.beginPath(); ctx.arc(0, 0, b.r * 1.55 + 8 + ai2 * 8, 0, 6.283); ctx.stroke(); ctx.restore();
+      }
+      ai2++;
+    }
+    // shadow
+    ctx.save(); ctx.scale(s, s); ctx.fillStyle = "rgba(40,20,5,.28)"; ctx.beginPath(); ctx.ellipse(6, 8, 46, 32, b.ang, 0, 6.283); ctx.fill(); ctx.restore();
+    // charge meter
+    if (b.charging) {
+      ctx.lineWidth = 6; ctx.strokeStyle = b.horn; ctx.globalAlpha = alpha * .9;
+      ctx.beginPath(); ctx.arc(0, 0, b.r * 1.6, -Math.PI / 2, -Math.PI / 2 + b.charge * 6.283); ctx.stroke();
+      if (b.full > 0) {   // leverage ring; blinks red in the liquidation zone
+        const lev = Math.min(1, b.full / 1.2), danger = b.full >= 1.2;
+        if (!danger || Math.floor(performance.now() / 90) % 2) {
+          ctx.strokeStyle = danger ? C.rope : C.brass; ctx.lineWidth = 5;
+          ctx.beginPath(); ctx.arc(0, 0, b.r * 1.6 + 9, -Math.PI / 2, -Math.PI / 2 + lev * 6.283); ctx.stroke();
+        }
+      }
+      ctx.globalAlpha = alpha;
+    }
+    ctx.rotate(b.ang); ctx.scale(s, s);
+    const wig = b.charging ? (Math.random() - .5) * (b.full >= 1.2 ? 7 : b.full > 0 ? 4 : 2.5) : 0; ctx.translate(wig, 0);
+    // legs (walk cycle)
+    const st = Math.sin(b.step) * 6;
+    ctx.fillStyle = "#0a0908";
+    [[18, 22, st], [18, -22, -st], [-22, 20, -st], [-22, -20, st]].forEach(([x, y, o]) => { ctx.beginPath(); ctx.ellipse(x + o, y, 9, 6, 0, 0, 6.283); ctx.fill(); });
+    // tail
+    ctx.strokeStyle = "#0e0c0b"; ctx.lineWidth = 4; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(-40, 0); ctx.quadraticCurveTo(-54, Math.sin(b.step * .7) * 10, -60, Math.sin(b.step * .7 + 1) * 6); ctx.stroke();
+    // body
+    const body = ctx.createRadialGradient(4, -8, 4, 0, 0, 44);
+    body.addColorStop(0, "#3b3634"); body.addColorStop(.5, "#161413"); body.addColorStop(1, "#050505");
+    ctx.fillStyle = body; ctx.beginPath(); ctx.ellipse(-4, 0, 42, 29, 0, 0, 6.283); ctx.fill();
+    // shoulder hump
+    ctx.fillStyle = "rgba(255,255,255,.07)"; ctx.beginPath(); ctx.ellipse(12, -4, 16, 18, 0, 0, 6.283); ctx.fill();
+    // horns
+    ctx.strokeStyle = b.horn; ctx.lineWidth = 7; ctx.lineCap = "round";
+    [-1, 1].forEach((sd) => { ctx.beginPath(); ctx.moveTo(38, sd * 10); ctx.quadraticCurveTo(44, sd * 34, 64, sd * 24); ctx.stroke(); });
+    // head
+    ctx.fillStyle = "#121110"; ctx.beginPath(); ctx.ellipse(44, 0, 17, 15, 0, 0, 6.283); ctx.fill();
+    // muzzle + nose ring
+    ctx.fillStyle = "#2b2422"; ctx.beginPath(); ctx.ellipse(57, 0, 7, 10, 0, 0, 6.283); ctx.fill();
+    ctx.strokeStyle = b.horn; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(63, 0, 5, -1.2, 1.2); ctx.stroke();
+    // eyes
+    ctx.fillStyle = b.stun > 0 ? C.bone : C.rope;
+    [-1, 1].forEach((sd) => { ctx.beginPath(); ctx.arc(48, sd * 8, 2.6, 0, 6.283); ctx.fill(); });
+    ctx.restore();
+    // stun stars
+    if (b.stun > 0 && !b.out) {
+      ctx.fillStyle = C.bone; const t = performance.now() / 200;
+      for (let i = 0; i < 3; i++) { const a = t + i * 2.09; ctx.beginPath(); ctx.arc(b.x + Math.cos(a) * 26, b.y - 44 + Math.sin(a) * 8, 3.5, 0, 6.283); ctx.fill(); }
+    }
+  }
+
+  function drawParts(dt) {
+    parts = parts.filter((p) => (p.life -= dt) > 0);
+    for (const p of parts) {
+      p.x += p.vx * dt; p.y += p.vy * dt; const f = Math.exp(-3 * dt); p.vx *= f; p.vy *= f;
+      const k = p.life / p.max;
+      if (p.kind === "dust") { ctx.fillStyle = `rgba(150,115,70,${.35 * k})`; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * (1.6 - k), 0, 6.283); ctx.fill(); }
+      else if (p.kind === "steam") { ctx.fillStyle = `rgba(242,231,211,${.5 * k})`; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * (2 - k), 0, 6.283); ctx.fill(); }
+      else { ctx.fillStyle = `rgba(255,214,120,${k})`; ctx.fillRect(p.x - p.r / 2, p.y - p.r / 2, p.r, p.r); }
+    }
+  }
+
+  function drawOrbs() {
+    for (const o of orbs) {
+      const p = POWERS[o.type], bob = Math.sin(o.t * 4) * 3, fade = o.life < 1.5 && Math.floor(o.life * 8) % 2 ? .35 : 1;
+      ctx.save(); ctx.globalAlpha = fade;
+      const g = ctx.createRadialGradient(o.x, o.y + bob, 2, o.x, o.y + bob, 30);
+      g.addColorStop(0, p.color); g.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(o.x, o.y + bob, 30, 0, 6.283); ctx.fill();
+      ctx.fillStyle = C.night; ctx.beginPath(); ctx.arc(o.x, o.y + bob, 17, 0, 6.283); ctx.fill();
+      ctx.strokeStyle = p.color; ctx.lineWidth = 3; ctx.stroke();
+      ctx.font = "18px system-ui, 'Segoe UI Emoji', 'Apple Color Emoji', sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(p.icon, o.x, o.y + bob + 1);
+      ctx.restore();
+    }
+  }
+  function drawFx(dt) {
+    rings = rings.filter((r) => (r.life -= dt) > 0);
+    for (const r of rings) { r.r += dt * 900; ctx.save(); ctx.globalAlpha = r.life / .45; ctx.strokeStyle = r.color; ctx.lineWidth = 8;
+      ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, 6.283); ctx.stroke(); ctx.restore(); }
+    popups = popups.filter((p) => (p.life -= dt) > 0);
+    for (const p of popups) { p.y -= dt * 40; ctx.save(); ctx.globalAlpha = Math.min(1, p.life * 2); ctx.textAlign = "center";
+      ctx.font = `24px ${col("--display")}`; ctx.lineWidth = 6; ctx.strokeStyle = C.night; ctx.strokeText(p.text, p.x, p.y);
+      ctx.fillStyle = p.color; ctx.fillText(p.text, p.x, p.y); ctx.restore(); }
+  }
+
+  function bigText(t, sub) {
+    ctx.save(); ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.font = `64px ${col("--display")}`; ctx.lineWidth = 10; ctx.strokeStyle = C.night; ctx.fillStyle = C.bone;
+    ctx.strokeText(t, CX, CY - 10); ctx.fillText(t, CX, CY - 10);
+    if (sub) { ctx.font = `26px ${col("--display")}`; ctx.lineWidth = 7; ctx.strokeText(sub, CX, CY + 50); ctx.fillStyle = C.brass; ctx.fillText(sub, CX, CY + 50); }
+    ctx.restore();
+  }
+
+  function drawJoy() {
+    if (joy.id === null) return;
+    const k = W / cssSize; ctx.save(); ctx.globalAlpha = .35; ctx.strokeStyle = C.bone; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(joy.ox * k, joy.oy * k, 46 * k, 0, 6.283); ctx.stroke();
+    ctx.fillStyle = C.bone; ctx.beginPath(); ctx.arc((joy.ox + joy.x * 46) * k, (joy.oy + joy.y * 46) * k, 18 * k, 0, 6.283); ctx.fill(); ctx.restore();
+  }
+
+  // ---------- leaderboard ----------
+  // Global board = a Supabase table (public read + insert). Until SB_URL/SB_KEY are filled in,
+  // the board shows this device's own best runs.
+  const SB_URL = "", SB_KEY = "";
+  const board = (() => {
+    const note = (t) => ($("lbNote").textContent = t);
+    const nickEl = $("nick");
+    nickEl.value = store.get("nick", "");
+    const cleanNick = (s) => String(s || "").replace(/[\u0000-\u001f<>]/g, "").trim().slice(0, 16);
+    const nick = () => cleanNick(nickEl.value) || "Anon Bull";
+    const num = (v) => (Number.isFinite(Number(v)) ? Math.max(0, Math.floor(Number(v))) : 0);
+    const online = !!(SB_URL && SB_KEY);
+    const H = { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY, "Content-Type": "application/json" };
+    let rows = [];
+
+    function render() {
+      const body = $("lbBody"); body.textContent = "";
+      const list = rows.slice(0, 10);
+      if (!list.length) {
+        const tr = document.createElement("tr"), td = document.createElement("td");
+        td.colSpan = 5; td.className = "empty";
+        td.textContent = online ? "No trades yet. Play the CPU to get on the board." : "No runs yet. Play the CPU to log one.";
+        tr.append(td); body.append(tr);
+      }
+      list.forEach((r, i) => {
+        const tr = document.createElement("tr");
+        if (i === 0) tr.className = "top1";
+        const mine = cleanNick(r.nick) === nick() && nick() !== "Anon Bull";
+        if (mine) tr.classList.add("me");
+        [[String(i + 1), "rank"], [(cleanNick(r.nick) || "Anon Bull") + (mine ? " (you)" : ""), "nick"], [pnl(num(r.pts)), "num"],
+         [String(num(r.streak)), "num"], [String(num(r.level) || 1), "num hide-sm"]].forEach(([t, c]) => {
+          const td = document.createElement("td"); td.className = c; td.textContent = t; tr.append(td);
+        });
+        body.append(tr);
+      });
+      $("myStats").textContent = `Your best PnL: ${pnl(num(store.get("best", 0)))} · streak now ${streak}`;
+    }
+
+    async function load() {
+      if (!online) { rows = store.get("runs", []); render(); note("Your best runs on this device. The global board is coming soon."); return; }
+      const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 10000);
+      try {
+        const r = await fetch(`${SB_URL}/rest/v1/scores?select=nick,pts,streak,level&order=pts.desc&limit=10`, { headers: H, signal: ctl.signal });
+        if (!r.ok) throw new Error(r.status);
+        rows = await r.json(); render(); note("Top 10 trades worldwide. Play the CPU to post yours.");
+      } catch (e) { render(); note("The board can't be reached right now. Your runs still count on this device."); }
+      finally { clearTimeout(t); }
+    }
+
+    async function record(pts, won) {
+      const run = { nick: nick(), pts, streak, level: cpuLevel };
+      const runs = store.get("runs", []).concat([run]).sort((a, b) => b.pts - a.pts).slice(0, 10);
+      store.set("runs", runs);
+      if (!online) { rows = runs; render(); return; }
+      try {
+        const r = await fetch(`${SB_URL}/rest/v1/scores`, { method: "POST", headers: { ...H, Prefer: "return=minimal" }, body: JSON.stringify({ ...run, won }) });
+        if (!r.ok) throw new Error(r.status);
+        note(`Trade posted: ${pnl(pts)}`); load();
+      } catch (e) { render(); note("Couldn't post your score. It's kept on this device."); }
+    }
+
+    $("nickSave").onclick = () => {
+      store.set("nick", nick()); nickEl.value = nick() === "Anon Bull" ? "" : nick();
+      note("Name saved. It goes on your next posted run."); render();
+    };
+    nickEl.addEventListener("keydown", (e) => { if (e.key === "Enter") $("nickSave").click(); });
+    return { init: load, record };
+  })();
+  board.init();
+
+  // ---------- loop ----------
+  placeBulls();
+  let last = performance.now(), idle = 0;
+  function frame(now) {
+    const dt = Math.min(.033, (now - last) / 1000); last = now;
+    if (state === "fight") {
+      const i0 = humanInput(0), i1 = mode === "cpu" ? cpuInput(bulls[1], bulls[0], dt) : humanInput(1);
+      // sub-steps keep fast rams from tunnelling through each other
+      const n = 3;
+      for (let i = 0; i < n; i++) { updateBull(bulls[0], i0, dt / n); updateBull(bulls[1], i1, dt / n); collide(bulls[0], bulls[1], dt / n); }
+      updateOrbs(dt);
+      const o0 = bulls[0].out, o1 = bulls[1].out;
+      if (o0 || o1) { timer = .55; state = "falling"; }
+    } else if (state === "falling") {
+      updateBull(bulls[0], { mx: 0, my: 0, hold: false }, dt); updateBull(bulls[1], { mx: 0, my: 0, hold: false }, dt);
+      if ((timer -= dt) <= 0) { const o0 = bulls[0].out, o1 = bulls[1].out; endRound(o0 && o1 ? -1 : (o0 ? 1 : 0)); }
+    } else if (state === "count") {
+      if ((timer -= dt) <= 0) state = "fight";
+    } else if (state === "round") {
+      if ((timer -= dt) <= 0) { if (score[0] >= WIN || score[1] >= WIN) endMatch(); else newRound(); }
+    } else if (state === "menu") {
+      // idle demo: the two bulls circle each other
+      idle += dt; bulls.forEach((b, i) => { const a = idle * .6 + i * Math.PI; b.x = CX + Math.cos(a) * 150; b.y = CY + Math.sin(a) * 150; b.ang = a + Math.PI / 2; b.step += dt * 6; });
+    }
+
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    if (shake > 0 && !reduced) { ctx.translate((Math.random() - .5) * shake, (Math.random() - .5) * shake); }
+    shake = Math.max(0, shake - dt * 40);
+    drawRing(); drawOrbs(); drawParts(dt); bulls.forEach(drawBull); drawFx(dt);
+    if (flash > 0) { ctx.fillStyle = `rgba(255,240,210,${flash * 3})`; ctx.fillRect(0, 0, W, W); flash -= dt; }
+    if (state === "count") bigText(timer > 1.6 ? "3" : timer > .8 ? "2" : timer > .2 ? "1" : "SEND IT!", PHASES[Math.min(PHASES.length - 1, score[0] + score[1])]);
+    if (state === "round") bigText(`${score[0]} – ${score[1]}`, banner);
+    drawJoy();
+    requestAnimationFrame(frame);
+  }
+  pips();
+  requestAnimationFrame(frame);
+})();
+</script>
+
+</body>
+</html>
